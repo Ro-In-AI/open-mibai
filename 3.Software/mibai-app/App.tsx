@@ -1,130 +1,102 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, Animated } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
-
-// 表情配置
-const emotions = {
-  happy: {
-    eyes: { width: 30, height: 30, borderRadius: 15 },
-  },
-  curious: {
-    eyes: { width: 35, height: 25, borderRadius: 12 },
-  },
-  bubble: {
-    eyes: { width: 40, height: 40, borderRadius: 20 },
-  }
-};
+import { RoboEyes } from './components/RoboEyes';
 
 export default function App() {
+  // 添加一个状态来控制圆环的显示
+  const [showRings, setShowRings] = useState(false);
+  
+  // 创建三个动画值用于控制三个同心圆的动画
   const ringAnims = useRef([
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0)
   ]).current;
   
-  // 替换原来的 ringAnim
-  // const ringAnim = useRef(new Animated.Value(0)).current;
-  
+  // 定义情绪类型
   type EmotionType = 'happy' | 'curious' | 'bubble';
 
-  const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('happy');
-  const leftEyeHeightAnim = useRef(new Animated.Value(emotions[currentEmotion].eyes.height)).current;
-  const rightEyeHeightAnim = useRef(new Animated.Value(emotions[currentEmotion].eyes.height)).current;
+  // 状态管理
+  const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('happy');  // 当前情绪状态
+  // 蓝牙相关状态
+  const [bluetoothStatus, setBluetoothStatus] = useState('开发中...');  // 蓝牙连接状态
+  const [isScanning, setIsScanning] = useState(false);  // 是否正在扫描设备
 
-  const [bluetoothStatus, setBluetoothStatus] = useState('开发中...');
-  const [isScanning, setIsScanning] = useState(false);
-
-  // 监听情绪变化，更新眼睛高度
-  useEffect(() => {
-    const newEyeHeight = emotions[currentEmotion].eyes.height;
-    leftEyeHeightAnim.setValue(newEyeHeight);
-    rightEyeHeightAnim.setValue(newEyeHeight);
-  }, [currentEmotion]);
-
-  // 环形动画
+  // 启动同心圆扩散动画
+  /**
+   * 启动同心圆扩散动画
+   * 该函数为每个圆环创建一个循环动画，实现波纹扩散效果
+   */
   const startRingAnimation = () => {
+    // 遍历所有圆环动画值
     ringAnims.forEach((anim, index) => {
+      // 重置动画初始值为0
       anim.setValue(0);
+      
+      // 创建循环动画
       Animated.loop(
+        // 使用序列动画，按顺序执行多个动画
         Animated.sequence([
+          // 第一个动画：圆环从小变大，同时透明度降低
           Animated.timing(anim, {
-            toValue: 1,
-            duration: 2000,
-            delay: index * 400, // 错开每个圆环的动画时间
-            useNativeDriver: false,
+            toValue: 1,        // 动画目标值
+            duration: 2000,    // 动画持续时间（毫秒）
+            delay: index * 400,  // 错开每个圆环的动画时间，营造波纹效果
+            useNativeDriver: false,  // 不使用原生动画驱动，因为需要改变非transform属性
           }),
+          // 第二个动画：瞬间重置动画值
           Animated.timing(anim, {
-            toValue: 0,
-            duration: 0,
+            toValue: 0,        // 重置为初始值
+            duration: 0,       // 立即执行，无过渡时间
             useNativeDriver: false,
           })
         ])
-      ).start();
+      ).start();  // 开始执行循环动画
     });
   };
-
-  // 模拟蓝牙扫描和连接
+  // 模拟蓝牙扫描和连接过程
   const startScan = async () => {
     setBluetoothStatus('正在扫描设备...');
     setIsScanning(true);
+    setShowRings(true);
     startRingAnimation();
 
     setTimeout(() => {
       setBluetoothStatus('已连接');
       setIsScanning(false);
       
-      // 创建淡出动画
-      ringAnims.forEach((anim, index) => {
-        Animated.timing(anim, {
-          toValue: 0,
-          duration: 1000, // 1秒的淡出时间
-          useNativeDriver: false,
-        }).start(() => {
-          // 动画结束后重置动画值
-          anim.setValue(0);
-        });
+      ringAnims.forEach(anim => anim.stopAnimation());
+      
+      Animated.parallel(
+        ringAnims.map(anim =>
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: false,
+          })
+        )
+      ).start(() => {
+        ringAnims.forEach(anim => anim.setValue(0));
+        setShowRings(false);  // 在动画完成后隐藏圆环
       });
     }, 3000);
   };
 
+  // 处理机器人点击事件
   const handleRobotPress = () => {
-    if (bluetoothStatus !== '已连接') {
+    if (bluetoothStatus === '已连接') {
+      // 如果已连接，则断开连接
+      setBluetoothStatus('开发中...');
+      setIsScanning(false);
+    } else {
+      // 如果未连接，则开始扫描
       startScan();
     }
   };
 
-  // 眨眼动画函数
-  const blink = () => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(leftEyeHeightAnim, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: false,
-        }),
-        Animated.timing(rightEyeHeightAnim, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: false,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(leftEyeHeightAnim, {
-          toValue: emotions[currentEmotion].eyes.height,
-          duration: 100,
-          useNativeDriver: false,
-        }),
-        Animated.timing(rightEyeHeightAnim, {
-          toValue: emotions[currentEmotion].eyes.height,
-          duration: 100,
-          useNativeDriver: false,
-        }),
-      ]),
-    ]).start();
-  };
-
-  // 切换表情函数
+  // 切换表情：在三种情绪状态间循环
   const changeEmotion = () => {
     const emotionsList: EmotionType[] = ['happy', 'curious', 'bubble'];
     const nextEmotion = emotionsList[(emotionsList.indexOf(currentEmotion) + 1) % emotionsList.length];
@@ -133,7 +105,8 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {ringAnims.map((anim, index) => (
+      {/* 只在 showRings 为 true 时渲染圆环 */}
+      {showRings && ringAnims.map((anim, index) => (
         <Animated.View
           key={index}
           style={[
@@ -146,41 +119,22 @@ export default function App() {
               transform: [{
                 scale: anim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [1, 2]
+                  outputRange: [0.01, 2]  // 从一个很小的点开始
                 })
               }]
             }
           ]}
         />
       ))}
-      
-      <TouchableOpacity onPress={handleRobotPress}>
-        <View style={styles.eyesContainer}>
-          <Animated.View
-            style={[styles.eye, {
-              width: emotions[currentEmotion].eyes.width,
-              height: leftEyeHeightAnim,
-              borderRadius: emotions[currentEmotion].eyes.borderRadius,
-            }]}
-          />
-          <Animated.View
-            style={[styles.eye, {
-              width: emotions[currentEmotion].eyes.width,
-              height: rightEyeHeightAnim,
-              borderRadius: emotions[currentEmotion].eyes.borderRadius,
-            }]}
-          />
-        </View>
-      </TouchableOpacity>
 
+      {/* 机器人眼睛部分 */}
+      <RoboEyes currentEmotion={currentEmotion} onPress={handleRobotPress} />
+
+      {/* 状态面板 */}
       <View style={styles.statusPanel}>
         <Text style={styles.statusText}>蓝牙状态: {bluetoothStatus}</Text>
         <Text style={styles.statusText}>点击机器人开始连接</Text>
       </View>
-
-      <TouchableOpacity style={styles.blinkButton} onPress={blink}>
-        <Text style={styles.buttonText}>Blink</Text>
-      </TouchableOpacity>
 
       <TouchableOpacity style={styles.blinkButton} onPress={changeEmotion}>
         <Text style={styles.buttonText}>Change Emotion</Text>
@@ -191,10 +145,11 @@ export default function App() {
   );
 }
 
+// 修改 ring 样式
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#000000',  // 黑色背景
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -203,47 +158,42 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    borderWidth: 2,
+    borderWidth: 4,  // 增加边框宽度使小点时更明显
     borderColor: '#00f7ff',
     opacity: 0.5,
+    top: '50%',
+    left: '50%',
+    marginLeft: -125,
+    marginTop: -125,
   },
-  eyesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: 100,
-    marginBottom: 20,
-  },
-  eye: {
-    backgroundColor: '#00f7ff',
-    margin: 5,
-  },
+
   statusPanel: {
     position: 'absolute',
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',  // 半透明黑色背景
     borderRadius: 15,
     padding: 15,
     borderWidth: 1,
-    borderColor: '#00f7ff',
+    borderColor: '#00f7ff',  // 青色边框
   },
   statusText: {
-    color: '#ffffff',
+    color: '#ffffff',  // 白色文字
     fontSize: 16,
     marginBottom: 5,
   },
   blinkButton: {
     position: 'absolute',
     bottom: 40,
-    backgroundColor: '#00f7ff',
+    backgroundColor: '#00f7ff',  // 青色按钮
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
     marginTop: 10
   },
   buttonText: {
-    color: '#000',
+    color: '#000',  // 黑色文字
     fontSize: 16,
   },
 });
