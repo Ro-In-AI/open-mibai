@@ -16,10 +16,11 @@ export default function App() {
   ]).current;
   
   // 定义情绪类型
-  type EmotionType = 'happy' | 'curious' | 'bubble';
+  type EmotionType = 'default' | 'exploring';
 
   // 状态管理
-  const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('happy');  // 当前情绪状态
+  const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('default');  // 当前情绪状态
+  
   // 蓝牙相关状态
   const [bluetoothStatus, setBluetoothStatus] = useState('开发中...');  // 蓝牙连接状态
   const [isScanning, setIsScanning] = useState(false);  // 是否正在扫描设备
@@ -98,7 +99,7 @@ export default function App() {
 
   // 切换表情：在三种情绪状态间循环
   const changeEmotion = () => {
-    const emotionsList: EmotionType[] = ['happy', 'curious', 'bubble'];
+    const emotionsList: EmotionType[] = ['default', 'exploring'];
     const nextEmotion = emotionsList[(emotionsList.indexOf(currentEmotion) + 1) % emotionsList.length];
     setCurrentEmotion(nextEmotion);
   };
@@ -137,7 +138,7 @@ export default function App() {
       </View>
 
       <TouchableOpacity style={styles.blinkButton} onPress={changeEmotion}>
-        <Text style={styles.buttonText}>Change Emotion</Text>
+        <Text style={styles.buttonText}>Change State</Text>
       </TouchableOpacity>
 
       <StatusBar style="auto" />
