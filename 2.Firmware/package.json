@@ -1,0 +1,51 @@
+{
+  "name": "mibai2_firmware",
+  "version": "1.0.1",
+  "description": "mibai2版本的嵌入式固件代码",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pio run",
+    "upload": "pio run --target upload",
+    "upload-fs": "pio run --target uploadfs",
+    "upload-all": "pio run -t erase; npm run upload-fs; npm run upload",
+    "erase": "pio run -t erase",
+    "monitor": "pio device monitor",
+    "clean": "pio run --target clean",
+    "flash-tool": "node scripts/flash-tool.js",
+    "package": "node scripts/package-release.js",
+    "release": "npm run clean; npm run package",
+    "build-firmware": "node scripts/build-firmware.js",
+    "upload-firmware": "node scripts/upload-firmware.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ERRORIGHT-AI/mibai2_Firmware.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ERRORIGHT-AI/mibai2_Firmware/issues"
+  },
+  "homepage": "https://github.com/ERRORIGHT-AI/mibai2_Firmware#readme",
+  "devDependencies": {
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "cz-customizable": "^7.4.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-customizable"
+    }
+  },
+  "dependencies": {
+    "axios": "^1.10.0",
+    "form-data": "^4.0.3"
+  }
+}

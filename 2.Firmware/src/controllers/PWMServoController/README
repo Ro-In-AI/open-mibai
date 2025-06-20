@@ -1,0 +1,31 @@
+### PWMServoController 类 构造函数
+- PWMServoController(uint8_t pin, uint8_t channel = 0)
+  - 参数 :
+    - pin : 舵机信号线引脚。
+    - channel : PWM通道，默认为0。 方法
+
+- void begin()
+  - 初始化PWM输出，调用此函数后才能控制舵机。
+
+- bool setAngle(int angle)
+  - 设置舵机角度，自动限制在 minAngle 到 maxAngle 之间。
+  - 参数 :
+    - angle : 要设置的角度。
+  - 返回值 : 是否成功设置。
+
+- int getCurrentAngle() const
+  
+  - 获取当前设置的角度。
+  - 返回值 : 当前角度。
+
+- void stop()  
+  - 停止PWM输出，舵机会保持当前角度或断电松弛。
+
+- void setLimits(int minPulse, int maxPulse, int minAng, int maxAng)
+  
+  - 设置脉冲宽度和角度范围。
+  - 参数 :
+    - minPulse : 最小脉冲宽度（μs）。
+    - maxPulse : 最大脉冲宽度（μs）。
+    - minAng : 最小角度。
+    - maxAng : 最大角度。

@@ -1,0 +1,169 @@
+> BLE 只是一个“消息通道”，负责接收命令 & 发送状态，不“理解”指令、不做控制决策。
+
+✅ 职责边界对比
+| 模块                   | 它做什么                          | 它不做什么         |
+| -------------------- | ----------------------------- | ------------- |
+| **BLEServer**        | 读取 BLE 写入的数据，转发给解析器；发送 notify | 不解析数据、不控制舵机   |
+| **CommandParser**    | 理解数据结构、提取命令码，分发给控制器           | 不发送 BLE，不操控串口 |
+| **MotionController** | 根据指令更新自由度、调用 motor driver     | 不处理 BLE、不解包数据 |
+| **EM3MotorDriver**   | 真正发串口指令                       | 不关心控制逻辑、不维护状态 |
+
+
+✅ BLE 类似于“串口”/“网口”
+你可以把 BLEServer 理解成：
+
+一个通信通道，只负责“搬运数据包”，不关心数据内容的业务含义。
+
+它做的就是：
+
+cpp
+复制
+编辑
+void BLEServer::onWrite(BLECharacteristic* char, uint8_t* data, size_t len) {
+    if (writeCallback) writeCallback(data, len);  // 转发给 CommandParser
+}
+✅ BLE 发送 notify 的时机（主动推送状态）
+你还可以在控制器更新状态后，调用 BLEServer 进行通知：
+
+```cpp
+std::vector<JointState> joints = motionController.getStates();
+bleServer.notifyJointState(joints);  // 封装状态并通过 notify 发出去
+```
+> 这就叫：控制器决定状态，BLE 只负责广播这个状态
+
+✅ 为什么这样分层好？
+| 好处    | 解释                                      |
+| ----- | --------------------------------------- |
+| ✅ 解耦  | BLE 可替换成串口、WiFi、MQTT 都不会影响业务逻辑          |
+| ✅ 易维护 | 协议升级（新命令、新特征）只动 `CommandParser`         |
+| ✅ 易调试 | 可以单测 BLE 模块是否接收完整数据，而不必验证舵机动作           |
+| ✅ 可拓展 | 支持“从多通道接收命令”（如 BLE、UART、Web）都能接入 parser |
+
+
+✅ 比喻理解：BLE 就像一个“USB 数据线”
+你上位机通过这条线发数据、收数据：
+
+蓝牙只是“线”
+
+parser 是“翻译器”
+
+controller 是“机械臂控制器”
+
+driver 是“控制电机的芯片接口”
+
+-----
+
+让我详细解释一下 it->second->setValue(reinterpret_cast<const char*>(data), len); 这行代码，尤其是其中 it->second 是如何工作的。
+
+it->second 详细说明
+首先，了解这行代码的背景：
+
+cpp
+复制
+编辑
+void BLEServerWrapper::notify(const std::string& uuid, const uint8_t* data, size_t len) {
+    auto it = notifyCharacteristics.find(uuid);  // 查找特征
+    if (it != notifyCharacteristics.end()) {
+        it->second->setValue(reinterpret_cast<const char*>(data), len);  // 设置特征值
+        it->second->notify();  // 触发通知
+    }
+}
+1. notifyCharacteristics 是什么？
+notifyCharacteristics 是一个 std::map<std::string, BLECharacteristic*> 类型的容器。它的作用是存储与每个 UUID 关联的 BLE 特征对象指针。UUID（通用唯一标识符）是 BLE 中每个服务和特征的标识符。
+
+std::map<std::string, BLECharacteristic*> 是一个关联容器，它将一个唯一的字符串（UUID）映射到一个指向 BLECharacteristic 对象的指针。这个容器用于管理特征，可以通过 UUID 查找相应的特征。
+
+举个例子，notifyCharacteristics 可能存储着类似这样的数据：
+
+cpp
+复制
+编辑
+std::map<std::string, BLECharacteristic*> notifyCharacteristics;
+假设我们已经通过以下方式将特征加入到这个映射中：
+
+cpp
+复制
+编辑
+notifyCharacteristics["1234"] = characteristic;  // UUID 为 "1234" 的特征指向 `characteristic` 对象
+2. auto it = notifyCharacteristics.find(uuid);
+这行代码的作用是查找 notifyCharacteristics 中是否存在具有给定 UUID 的特征。uuid 是传递给 notify() 函数的一个字符串参数。
+
+it 是一个迭代器，指向 std::map 中查找到的元素（如果找到的话）。
+
+notifyCharacteristics.find(uuid) 会返回一个指向包含该 uuid 的 pair 的迭代器，pair 中的第一个元素是 UUID（键），第二个元素是对应的 BLECharacteristic*（值）。
+
+如果 find 找到了该 uuid，it 就会指向 map 中的相应元素。否则，it 将是 notifyCharacteristics.end()，表示没有找到。
+
+3. it->second 的含义
+it->second 是 std::map 中存储的 pair 的第二个元素。每个 pair 都包含了一个 UUID 和一个 BLECharacteristic* 指针。
+
+it->second 是 BLECharacteristic* 类型，它指向一个 BLECharacteristic 对象。这个对象代表了一个 BLE 特征，它包含了 BLE 特征的所有信息（比如它的值、读写属性、通知能力等）。
+
+BLECharacteristic* 可以被用于调用该特征的成员函数，像 setValue 和 notify，来设置值并触发通知。
+
+例如，假设 it 指向的 pair 中，it->first 是 UUID（如 "1234"），而 it->second 是指向某个 BLECharacteristic 对象的指针。那么，it->second 便是该特征对象，表示了 UUID 为 "1234" 的特征。
+
+4. setValue(reinterpret_cast<const char*>(data), len)
+setValue 是 BLECharacteristic 类的成员函数，用来设置该特征的值。
+
+setValue 的一个重载接受 const char* 类型的参数和数据长度 len。由于原始数据是 uint8_t* 类型，我们需要使用 reinterpret_cast<const char*>(data) 将其转换为 const char*，以满足 setValue 方法的要求。
+
+len 是数据的长度，它告诉 setValue 要设置的字节数。
+
+cpp
+复制
+编辑
+it->second->setValue(reinterpret_cast<const char*>(data), len);
+这行代码的意思是将 data（字节数组）设置为对应特征的值，并传递其长度。reinterpret_cast 将字节数组转换为字符数组，以便 BLE 库接受。
+
+5. it->second->notify()
+这行代码用于触发 BLE 特征的通知。
+
+notify() 是 BLECharacteristic 类的成员函数，用来将特征的值通过 BLE 通知发送给所有订阅了该特征的客户端。
+
+当你调用 notify() 时，BLE 设备将向所有订阅该特征的客户端（例如手机应用）发送一个通知，告知它们该特征的值已更改。
+
+示例流程
+假设你的设备上有一个 light_status 特征，用于控制灯光的开关。你希望通过 BLE 通知客户端灯泡的状态改变。
+
+客户端请求控制灯光（比如通过发送 "on" 或 "off" 命令）。
+
+服务器端的 onWrite 回调函数被触发，特征的值被更新。
+
+通过 notify() 方法，服务器将新的状态值通知给所有已订阅该特征的客户端。
+
+客户端接收到通知，更新显示的状态（例如：灯光开关的状态）。
+
+总结
+it->second 是 std::map 中存储的特征对象指针。
+
+setValue 设置 BLE 特征的值，notify 触发通知，告知客户端该特征的值发生了变化。
+
+reinterpret_cast<const char*>(data) 将 uint8_t* 数据转换为 const char*，因为 setValue 需要接受字符数组。
+
+通过这个流程，你的 BLE 设备可以响应来自客户端的写入请求，更新特征值，并将更新通知所有相关客户端。
+
+---
+
+[BLEServerWrapper]  👈 BLE 服务框架（动态加载服务/特征）
+      ↓
+[MessageDispatcher] 👈 数据总线（由主循环或任务驱动处理）
+      ↓
+[用户逻辑模块]      👈 舵机、灯光、电池、控制响应等
+
+基于 UUID 消息路由的 BLE 控制器架构，每类功能（如舵机控制器 MotorController、灯光控制器 LEDController）通过一个统一的调度系统接收 BLE 消息，并且各自维护内部处理队列，在独立的任务中异步消费。
+
+```text
++---------------------+         +-------------------+
+|   BLEWriteTask      |  -->    |  MessageDispatcher|
++---------------------+         +-------------------+
+                                       |
+                      +----------------+------------------+
+                      |                                   |
+          +--------------------+               +-------------------+
+          |  MotorController   |               |   LEDController   |
+          +--------------------+               +-------------------+
+          | Task + Queue       |               | Task + Queue      |
+          | 控制逻辑处理       |               | 控制逻辑处理       |
+          +--------------------+               +-------------------+
+```
