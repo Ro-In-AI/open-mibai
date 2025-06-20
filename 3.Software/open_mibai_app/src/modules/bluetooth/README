@@ -1,0 +1,159 @@
+# modules/bluetooth 接口说明文档
+> 面向：UI 层/业务层开发者
+> 目的：一站式了解蓝牙模块 Redux API、状态、以及如何在组件中使用
+
+## 目录结构
+```bash
+modules/bluetooth/
+├── config/           # 配置（如设备名称、UUID 等）
+├── services/         # 设备操作服务（底层实现）
+├── utils/            # 工具函数
+├── bluetoothSlice.ts # Redux 状态及 actions
+├── bluetoothThunks.ts# 异步操作（connect/send/receive/disconnect）
+├── bluetoothTypes.ts # 类型定义
+└── README.md         # 接口说明（当前文档）
+```
+
+## 1. Redux State 结构
+所有蓝牙相关状态统一存放在 Redux：
+
+```ts
+interface BluetoothState {
+  status: 'idle' | 'scanning' | 'connecting' | 'connected' | 'disconnected' | 'error';
+  deviceInfo: { id: string; name?: string; mtu?: number } | null;
+  receivedData: { id: number; angle: number }[] | null; // 当前接收到的舵机状态数据
+}
+```
+
+### 状态描述
+- status
+  蓝牙整体连接流程的进度，UI 可据此渲染不同页面/弹窗/按钮态。
+
+- deviceInfo
+  当前已连接设备的信息（未连接则为 null）。
+
+- receivedData
+  最新一次蓝牙下发的舵机状态数组（可用作 UI 动画、实时状态同步）。
+
+## 2. 主要 API（Thunks 异步操作）
+所有蓝牙操作都通过 dispatch 这些 thunk 实现：
+
+### 1）连接设备
+```ts
+dispatch(connectToBluetoothDevice())
+```
+- 自动执行初始化、设备扫描、连接与监听。
+
+- 状态自动流转（scanning → connecting → connected）。
+
+- 匹配到目标设备后自动连接，并持续监听数据、断开等事件。
+
+### 2）断开连接
+```ts
+dispatch(disconnectFromBluetooth())
+```
+- 主动断开当前已连接蓝牙设备，并清空所有蓝牙相关状态。
+
+### 3）发送舵机指令
+```ts
+// 推荐通过 Uint8Array 或 string（会自动编码）
+dispatch(sendMotorCommand(data))
+```
+- data 需按设备协议格式封装（自定义的舵机控制协议），支持 Uint8Array 或字符串。
+
+## 3. Redux Actions（通常不用直接调用，仅用于极特殊场景）
+- `setStatus(status)`
+  设置连接状态（如特殊流程可用）。
+
+- `setDeviceInfo(deviceInfo)`
+  设置当前设备信息。
+
+- `setReceivedData(data)`
+  更新接收到的数据。
+
+- `clear()`
+  清空所有蓝牙相关状态。
+
+## 4. 状态监听与获取
+### 组件中获取蓝牙状态：
+```ts
+import { useSelector } from 'react-redux';
+import { RootState } from '你的store路径';
+
+// 读取当前蓝牙连接状态
+const status = useSelector((state: RootState) => state.bluetooth.status);
+const deviceInfo = useSelector((state: RootState) => state.bluetooth.deviceInfo);
+const receivedData = useSelector((state: RootState) => state.bluetooth.receivedData);
+```
+
+## 5. 推荐 UI 层调用流程
+### 首次进入页面自动检测 & 连接：
+
+```ts
+useEffect(() => {
+  if (status === 'idle' || status === 'disconnected') {
+    dispatch(connectToBluetoothDevice());
+  }
+}, [status, dispatch]);
+```
+### 断开重连：
+```ts
+dispatch(disconnectFromBluetooth());
+dispatch(connectToBluetoothDevice());
+```
+
+### 监听最新数据用于动画/交互：
+
+```ts
+useEffect(() => {
+  if (receivedData) {
+    // 例如：刷新 UI 上的舵机角度动画
+  }
+}, [receivedData]);
+```
+
+## 6. FAQ
+- Q: 如何判断蓝牙当前处于什么阶段？
+  监听 `status` 字段即可，典型 UI 流程建议如下：
+  - `idle` 初始页面、未连接
+  - `scanning` 正在查找设备，可展示 loading
+  - `connecting` 设备已选中，正在连接
+  - `connected` 成功，可以控制舵机
+  - `disconnected` 已断开，UI应弹窗提示重连
+  - `error` 异常，建议反馈错误信息并允许重试
+
+- Q: 如何收发自定义数据？
+  仅需按协议格式组装好数据，直接用 sendMotorCommand，监听 receivedData 响应。
+
+- Q: 新需求或协议变更怎么扩展？
+  推荐扩展 bluetoothThunks.ts，保持 Redux 层与协议/设备物理解耦。
+
+## 7. 示例：最小化控制代码
+```ts
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { connectToBluetoothDevice, sendMotorCommand } from 'modules/bluetooth/bluetoothThunks';
+
+const dispatch = useDispatch();
+const status = useSelector(state => state.bluetooth.status);
+
+// 连接设备
+useEffect(() => {
+  if (status === 'idle') {
+    dispatch(connectToBluetoothDevice());
+  }
+}, [status, dispatch]);
+
+// 发送指令（举例）
+const handleSend = () => {
+  const data = new Uint8Array([0xAA, 0x55, 0x01, ...]);
+  dispatch(sendMotorCommand(data));
+};
+```
+
+## 8. 类型定义速查
+见 `bluetoothTypes.ts`，所有 API 参数/状态数据都有严格 TS 类型提示。
+
+## 9. 高阶定制
+如需自定义更多蓝牙交互（如 OTA 升级、配网等），请新建 Thunk 并复用已有底层 Service 方法，保持 UI 层对协议和硬件无感知。
+

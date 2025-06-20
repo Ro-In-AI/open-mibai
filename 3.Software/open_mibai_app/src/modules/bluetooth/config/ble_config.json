@@ -1,0 +1,99 @@
+{
+  "$schema": "./ble_config.schema.json",
+  "ble_json_buffer_size": 512,
+  "ble_device_name": "ZouYuMibaiRobot2",
+  "services": [
+    {
+      "name": "MotorService",
+      "uuid": "ff010000-1000-8000-0080-5f9b34fb0000",
+      "description": "电机服务",
+      "characteristics": [
+        {
+          "name": "MotorWrite",
+          "uuid": "ef010001-1000-8000-0080-5f9b34fb0000",
+          "type": ["WRITE_NO_RESPONSE"],
+          "value": 	[170, 85, 3, 129],
+          "value_format": "bytes",
+          "description": "给电机发送控制指令"
+        },
+        {
+          "name": "MotorRead",
+          "uuid": "ef010002-1000-8000-0080-5f9b34fb0000",
+          "type": ["READ","NOTIFY"],
+          "value": [170, 85, 3, 129],  
+          "value_format": "bytes",
+          "description": "读取电机状态"
+        }
+      ]
+    },
+    {
+      "name": "LEDService",
+      "uuid": "ff020000-1000-8000-0080-5f9b34fb0000",
+      "description": "LED服务",
+      "characteristics": [
+        {
+          "name": "LEDWrite",
+          "uuid": "ef020001-1000-8000-0080-5f9b34fb0000",
+          "type": ["WRITE"],
+          "value": [170, 85, 3, 129],
+          "value_format": "bytes",
+          "description": "控制LED灯光"
+        }
+      ]
+    },
+    {
+      "name": "TouchService",
+      "uuid": "ff030000-1000-8000-0080-5f9b34fb0000",
+      "description": "触摸服务",
+      "characteristics": [
+        {
+          "name": "TouchRead",
+          "uuid": "ef030001-1000-8000-0080-5f9b34fb0000",
+          "type": ["READ", "NOTIFY"],
+          "value": 0,
+          "value_format": "int",
+          "description": "读取触摸状态(0:未触摸, 1:已触摸)"
+        }
+      ]
+    },
+    {
+      "name": "DeviceInformationService",
+      "uuid": "180a",
+      "description": "设备信息服务",
+      "characteristics": [
+        {
+          "name": "ManufacturerNameString",
+          "uuid": "2a29",
+          "type": ["READ"],
+          "value": "ErroRightAI",
+          "value_format": "string",
+          "description": "设备制造商名称"
+        },
+        {
+          "name": "FirmwareRevisionString",
+          "uuid": "2a26",
+          "type": ["READ"],
+          "value": "0.1.0",
+          "value_format": "string",
+          "description": "设备固件版本"
+        },
+        {
+          "name": "HardwareRevisionString",
+          "uuid": "2a27",
+          "type": ["READ"],
+          "value": "0.1.0",
+          "value_format": "string",
+          "description": "设备硬件版本"
+        },
+        {
+          "name": "SerialNumberString",
+          "uuid": "2a25",
+          "type": ["READ"],
+          "value": "1234567890",
+          "value_format": "string",
+          "description": "设备序列号"
+        }
+      ]
+    }
+  ]
+}

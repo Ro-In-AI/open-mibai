@@ -1,0 +1,64 @@
+# 蓝牙服务 (bluetoothService)
+
+bluetoothServices 与 React Native ble plx 通信，封装了蓝牙相关的 API 接口。
+采用全局变量存储当前连接的实例，方便后续使用。
+
+## API 接口
+
+### 初始化
+- `initialize()`: 初始化蓝牙服务
+  - 检查蓝牙权限
+  - 检查蓝牙状态
+  - 返回布尔值表示初始化是否成功
+
+### 设备管理
+- `getConnectedDevice()`: 获取当前连接的设备实例
+
+### 扫描相关
+- `scanForPeripherals(onDeviceFound)`: 扫描蓝牙设备
+  - 参数：onDeviceFound 回调函数，当发现设备时触发
+  - 自动处理位置服务未开启等错误
+
+- `stopScan()`: 停止扫描蓝牙设备
+
+### 连接相关
+- `connectToDevice(deviceId)`: 连接蓝牙设备
+  - 参数：deviceId 设备ID
+  - 自动发现服务和特征
+  - 自动监听断开连接事件
+  - 返回连接的设备实例
+
+- `disconnectDevice(deviceId)`: 断开蓝牙设备连接
+  - 参数：deviceId 设备ID
+  - 返回布尔值表示是否成功断开
+
+- `isDeviceConnected(deviceId)`: 检查设备连接状态
+  - 参数：deviceId 设备ID
+  - 返回布尔值表示是否已连接
+
+### 数据通信
+- `sendData(serviceUUID, characteristicUUID, data)`: 发送数据到设备
+  - 参数：
+    - serviceUUID: 服务UUID
+    - characteristicUUID: 特征UUID
+    - data: 要发送的数据（字符串）
+  - 数据会被自动转换为base64编码
+
+- `startNotifications(serviceUUID, characteristicUUID, onDataReceived)`: 开始监听数据
+  - 参数：
+    - serviceUUID: 服务UUID（可选）
+    - characteristicUUID: 特征UUID（可选）
+    - onDataReceived: 数据接收回调函数
+
+- `stopNotifications(serviceUUID, characteristicUUID)`: 停止监听数据
+  - 参数：
+    - serviceUUID: 服务UUID
+    - characteristicUUID: 特征UUID
+
+## 错误处理
+所有API都包含了错误处理机制：
+- 权限检查
+- 蓝牙状态检查
+- 位置服务检查
+- 连接状态检查
+- 异常捕获和日志记录

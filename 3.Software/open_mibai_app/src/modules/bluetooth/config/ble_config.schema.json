@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "services": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["uuid", "name", "characteristics"],
+          "properties": {
+            "uuid": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "characteristics": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["uuid", "name", "type"],
+                "properties": {
+                  "uuid": { "type": "string" },
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "type": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["READ", "WRITE", "NOTIFY", "WRITE_NO_RESPONSE"]
+                    }
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": ["bytes", "string", "json", "int"]
+                  },
+                  "value": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "number" },
+                      { "type": "array", "items": { "type": "number" } },
+                      { "type": "object" }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
