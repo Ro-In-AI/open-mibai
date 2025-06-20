@@ -1,0 +1,202 @@
+清晰职责分离：
+它跟 config.h（配置引脚/数量等硬件相关）不同，defs/ 主要关注的是协议/通信指令层面的定义。
+
+避免魔法数字：
+所有 0x01、0x02、UUID 等都集中管理，避免到处硬编码。
+
+方便多人协作与复用：
+比如后续你 BLE 协议变更、舵机命令扩展，只需改一个文件，不用翻所有逻辑层代码。
+
+✅ 推荐约定：
+所有协议/指令层定义放 defs/
+
+所有硬件配置/引脚映射放 config.h
+
+所有数据结构（如 JointState）放 models/
+
+这样整个工程将非常模块化、易维护。
+
+| 文件              | 说明                                  |
+| --------------- | ----------------------------------- |
+| `ble_defs.h`    | 所有 BLE 相关 UUID 和命令码                 |
+| `motor_defs.h`  | 所有舵机通信协议字段、帧头校验等                    |
+| `robot_modes.h` | 机器人运行状态定义（如 IDLE / RUNNING / ERROR） |
+
+
+构建好完整的嵌入式系统骨架代码，涵盖了：
+
+🧠 JointState 模型（支持多个自由度）
+
+🎮 MotionController 控制器（控制舵机逻辑）
+
+⚙️ EM3MotorDriver 驱动层（负责串口发送）
+
+📡 CommandParser 服务层（处理 BLE 指令协议）
+
+🔧 main.cpp 主程序调度
+
+🌐 config.h 和 BLE UUID 常量定义
+
+
+ 我推荐的编码思想基于以下三层结构：
+🧠 模型层（Model）
+🎮 控制层（Controller）
+⚙️ 驱动层（Driver）
+🧱 （+附加：服务层 Service 用于协议解析）
+
+✅ 一、模型层（Model Layer） → 数据结构与状态封装
+📂：include/models/
+
+🧩 职责：
+用于抽象定义“机器人”状态，如舵机角度、是否使能、ID、最大角度等
+
+所有控制器、驱动器都依赖于它作为输入和状态表达
+
+🧱 示例：JointState.h
+cpp
+复制
+编辑
+#pragma once
+
+struct JointState {
+    uint8_t id;         // 舵机编号
+    int angle;          // 当前角度
+    bool enabled;       // 舵机是否上电
+    int speed;          // 可选：速度值（如果协议支持）
+};
+✅ 编码建议：
+每个自由度用一个 JointState 表示
+
+所有自由度组成一个 std::vector<JointState>，便于动态增减
+
+其他模块不要乱改这些状态，需通过 Controller 接口访问（封装思想）
+
+✅ 二、控制层（Controller Layer） → 控制逻辑与状态管理
+📂：src/controllers/
+
+🎮 职责：
+面向任务，如“让机器人移动到一个新姿态”、“设定某个舵机角度”
+
+不负责具体协议、不发送串口，仅逻辑处理
+
+是 BLE 指令和底层驱动之间的中间桥梁
+
+🧱 示例：MotionController.h
+cpp
+复制
+编辑
+class MotionController {
+public:
+    void setAngle(uint8_t id, int angle);
+    void enableServo(uint8_t id, bool enable);
+    void update();  // 用于循环执行或任务调度
+
+    const std::vector<JointState>& getStates();  // 提供给 BLE 状态读取
+private:
+    std::vector<JointState> joints;
+};
+✅ 编码建议：
+控制器不关心协议、也不关心串口，只负责逻辑和状态管理
+
+将舵机控制操作下发给 EM3MotorDriver
+
+提供 update() 函数用于 loop 中统一调度
+
+✅ 三、驱动层（Driver Layer） → 与硬件打交道的最低层
+📂：src/drivers/
+
+⚙️ 职责：
+实际发送指令到串口（舵机）、BLE notify、控制 LED
+
+对上层隐藏具体通讯细节
+
+封装例如：“设置角度”，“打开使能”等底层协议操作
+
+🧱 示例：EM3MotorDriver.h
+cpp
+复制
+编辑
+class EM3MotorDriver {
+public:
+    void sendAngle(uint8_t id, int angle);
+    void setEnable(uint8_t id, bool enable);
+};
+✅ 编码建议：
+Driver 是 无状态 的，只执行具体操作
+
+参数通过 Controller 传入，驱动器不持有任何状态
+
+✅ 四、服务层（Service Layer） → 协议解析、命令调度
+📂：src/services/
+
+📡 职责：
+处理 BLE 收到的数据（解析命令字、参数）
+
+根据命令类型分发给对应的控制器模块
+
+可处理状态上报、错误反馈等协议控制内容
+
+🧱 示例：CommandParser.cpp
+cpp
+复制
+编辑
+void CommandParser::onWrite(const uint8_t* data, size_t len) {
+    uint8_t cmdType = data[2];
+    switch (cmdType) {
+        case MOTOR_CMD_SET_MULTIPLE:
+            motionController.setMultiple(data + 3, len - 3);
+            break;
+        case MOTOR_CMD_SET_ENABLE:
+            ...
+            break;
+    }
+}
+✅ 编码建议：
+这一层理解“协议”，负责“翻译” BLE 数据
+
+任何新指令只需要在这里扩展分发逻辑
+
+✅ 五、主循环中的设计思想（Application Layer）
+cpp
+复制
+编辑
+void setup() {
+    bleServer.begin();
+    motionController.init();
+}
+
+void loop() {
+    bleServer.update();          // 处理BLE接收、通知
+    motionController.update();   // 控制动作推进
+    ledController.update();      // 状态动画推进
+}
+所有模块暴露 update() 方法，通过 loop 主动轮询调度，避免中断混乱
+
+✅ 编码风格统一性（建议）
+项目约定	建议
+类命名	大驼峰，如 MotionController
+文件命名	小写+下划线，如 motion_controller.cpp
+状态定义	枚举类 + 结构体，例如 enum class RobotMode { IDLE, RUNNING, ERROR };
+UUID / 命令码	全放在 ble_defs.h / motor_defs.h 里，集中管理
+日志输出	使用统一封装的 debug_log.h，不要直接 Serial.print()
+
+
+============================
+
+
+目录结构
+
+project_root/
+├── src/
+│   ├── main.cpp                  ← 统一入口
+│   ├── config.h                 ← 当前测试模块选择
+│   ├── app_router.h             ← 模块枚举 & 调度
+│   ├── apps/
+│   │   ├── app_servo.cpp/h      ← 舵机测试模块
+│   │   ├── app_led.cpp/h        ← LED 测试模块
+│   │   ├── app_ble.cpp/h        ← BLE 测试模块
+│   │   └── app_battery.cpp/h    ← 电池测试模块
+│   └── controllers/ ...         ← 你的现有封装
+
+
+使用pio run --target uploadfs上传文件系统
