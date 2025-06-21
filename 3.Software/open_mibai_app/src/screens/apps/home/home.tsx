@@ -3,40 +3,41 @@ import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import SoundPlayer from "react-native-sound-player";
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../store/store';
-import { connectToBluetoothDevice } from '../../modules/bluetooth/bluetoothThunks';
+import { RootState, AppDispatch } from '../../../store/store';
+import { connectToBluetoothDevice } from '../../../modules/bluetooth/bluetoothThunks';
+
 
 // 定义所有的测试资源
 const testAssets = [
   {
     name: 'bubble',
-    gif: require('../../assets/gifs/bubble.gif'),
-    sound: require('../../assets/sounds/bubble.mp3')
-  },
+    gif: require('../../../assets/gifs/bubble.gif'),
+    sound: require('../../../assets/sounds/bubble.mp3')
+  },  
   {
     name: 'curious',
-    gif: require('../../assets/gifs/curious.gif'),
-    sound: require('../../assets/sounds/curious.mp3')
+    gif: require('../../../assets/gifs/curious.gif'),
+    sound: require('../../../assets/sounds/curious.mp3')
   },
   {
     name: 'happy',
-    gif: require('../../assets/gifs/happy.gif'),
-    sound: require('../../assets/sounds/rhappy.mp3')
+    gif: require('../../../assets/gifs/happy.gif'),
+    sound: require('../../../assets/sounds/rhappy.mp3')
   },
   {
     name: 'sad',
-    gif: require('../../assets/gifs/sad.gif'),
-    sound: require('../../assets/sounds/rworried.mp3')
+    gif: require('../../../assets/gifs/sad.gif'),
+    sound: require('../../../assets/sounds/rworried.mp3')
   },
   {
     name: 'shock',
-    gif: require('../../assets/gifs/shock.gif'),
-    sound: require('../../assets/sounds/rscream.mp3')
+    gif: require('../../../assets/gifs/shock.gif'),
+    sound: require('../../../assets/sounds/rscream.mp3')
   },
   {
     name: 'xx',
-    gif: require('../../assets/gifs/xx.gif'),
-    sound: require('../../assets/sounds/bubble.mp3') // 使用 bubble 作为默认音频
+    gif: require('../../../assets/gifs/xx.gif'),
+    sound: require('../../../assets/sounds/bubble.mp3') // 使用 bubble 作为默认音频
   }
 ];
 
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#666',
   },
   hiddenVideo: {
-    position: 'absolute',
+    position: 'absolute', 
     top: 0,
     left: 0,
     width: 1,

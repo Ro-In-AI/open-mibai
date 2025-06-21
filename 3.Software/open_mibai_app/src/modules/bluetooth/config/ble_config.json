@@ -1,7 +1,7 @@
 {
   "$schema": "./ble_config.schema.json",
   "ble_json_buffer_size": 512,
-  "ble_device_name": "ZouYuMibaiRobot2",
+  "ble_device_name": "open_mibai_robot",
   "services": [
     {
       "name": "MotorService",

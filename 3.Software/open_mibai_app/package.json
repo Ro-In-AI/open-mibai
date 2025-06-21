@@ -17,6 +17,7 @@
     "@reduxjs/toolkit": "^2.8.2",
     "react": "19.1.0",
     "react-native": "0.80.0",
+    "react-native-base64": "^0.2.1",
     "react-native-ble-plx": "^3.5.0",
     "react-native-fast-image": "^8.6.3",
     "react-native-gesture-handler": "^2.26.0",

@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators, TransitionSpecs } from '@react-navigation/stack';
 
 import GIFTest from './src/screens/tests/GIFTest';
+import Home from './src/screens/apps/home/home';
 
 const Stack = createStackNavigator();
 
@@ -14,7 +15,7 @@ function App(): React.JSX.Element {
     <Provider store={store}> {/* ✅ 包裹整个 app */}
       <NavigationContainer>
         <Stack.Navigator
-          initialRouteName="GIFTest"
+          initialRouteName="Home"
           screenOptions={{
             headerShown: false,
             cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
@@ -30,7 +31,7 @@ function App(): React.JSX.Element {
             },
           }}
         >
-          <Stack.Screen name="GIFTest" component={GIFTest} />
+          <Stack.Screen name="Home" component={Home} />
         </Stack.Navigator>
       </NavigationContainer>
     </Provider>
