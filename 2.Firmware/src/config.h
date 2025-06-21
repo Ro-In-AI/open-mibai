@@ -7,7 +7,8 @@
 
 // 🧠 只保留一个定义，表示当前使用哪个模块入口
 // #define ENTRY_APP_EXAMPLE
-#define ENTRY_TEST_PWM
+// #define ENTRY_TEST_PWM
+#define ENTRY_APP_MAIN
 
 #if defined(ESP32_DEV)
   #pragma message("💡 当前使用开发板：ESP32_DEV")

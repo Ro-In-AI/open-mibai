@@ -12,7 +12,7 @@
     "build": "pio run",
     "upload": "pio run --target upload",
     "upload-fs": "pio run --target uploadfs",
-    "upload-all": "pio run -t erase; npm run upload-fs; npm run upload",
+    "upload-all": "pio run -t erase && npm run upload-fs && npm run upload",
     "erase": "pio run -t erase",
     "monitor": "pio device monitor",
     "clean": "pio run --target clean",

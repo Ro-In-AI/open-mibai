@@ -1,7 +1,7 @@
 {
   "$schema": "./ble_config.schema.json",
   "ble_json_buffer_size": 512,
-  "ble_device_name": "open-mibai",
+  "ble_device_name": "open_mibai_robot",
   "services": [
     {
       "name": "MotorService",
@@ -38,28 +38,6 @@
           ],
           "value_format": "bytes",
           "description": "读取电机状态"
-        }
-      ]
-    },
-    {
-      "name": "LEDService",
-      "uuid": "ff020000-1000-8000-0080-5f9b34fb0000",
-      "description": "LED服务",
-      "characteristics": [
-        {
-          "name": "LEDWrite",
-          "uuid": "ef020001-1000-8000-0080-5f9b34fb0000",
-          "type": [
-            "WRITE"
-          ],
-          "value": [
-            170,
-            85,
-            3,
-            129
-          ],
-          "value_format": "bytes",
-          "description": "控制LED灯光"
         }
       ]
     },
